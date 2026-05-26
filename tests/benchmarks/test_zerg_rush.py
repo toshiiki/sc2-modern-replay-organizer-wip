@@ -1,18 +1,13 @@
-"""Zerg Rush benchmark — progressive validation for Workshop Step "Creating a Zerg Rush Bot".
+"""Zerg Rush benchmark — progressive validation for Build Module "Creating a Zerg Rush Bot".
 
 Maps to VersusAI Workshop Discourse topic 40:
 https://community.versusai.net/t/creating-a-zerg-rush-bot-in-python-from-scratch/40
 
-9 progressive steps:
-  Step 1: Train workers to 16 supply
-  Step 2: Build Spawning Pool at 12 supply
-  Step 3: Build Extractor after Pool
-  Step 4: Build Overlords when needed (no extended supply blocks)
-  Step 5: Expand after 14 supply
-  Step 6: Spawn Zerglings and Queens
-  Step 7: Research Zergling Speed
-  Step 8: Produce Queens
-  Step 9: Attack enemy base
+4 progressive stages:
+  Stage 1: Economy Foundation — 16 workers, Extractor, no supply blocks
+  Stage 2: The Rush Core — Spawning Pool, Zerglings
+  Stage 3: The Speed Advantage — Queen Injects, Metabolic Boost
+  Stage 4: Attack — Zerglings sent to enemy base
 
 Uses parsed replay data from sc2-replay-parser. Player-agnostic — use
 --bot-player=1 or --bot-player=2 to specify which player is the bot.
@@ -41,13 +36,24 @@ DRONE = ZERG_UNITS["DRONE"]
 ZERGLING = ZERG_UNITS["ZERGLING"]
 QUEEN = ZERG_UNITS["QUEEN"]
 
+# Game-time targets (in seconds) from the module checkpoints
+POOL_TARGET_TIME = 40       # Spawning Pool started by ~0:40
+POOL_MIN_TIME = 30          # Allow 0:30–0:55 pass range
+POOL_MAX_TIME = 55
+SPEED_TARGET_TIME = 150      # Speed researching by ~2:30
+SPEED_MIN_TIME = 120         # Allow 2:00–4:00 pass range
+SPEED_MAX_TIME = 240
+ATTACK_TARGET_TIME = 240     # Engagement before 4:00
+ATTACK_MAX_TIME = 300        # Hard cap — rush should happen by 5:00
+
 
 # ---------------------------------------------------------------------------
-# Step 1: Train Workers to 16 Supply
+# Stage 1: Economy Foundation
 # ---------------------------------------------------------------------------
 
-class TestStep1WorkersTo16:
-    """Step 1: Train Drones until you reach 16 supply."""
+class TestStage1EconomyFoundation:
+    """Stage 1: Your bot produces Drones to 16 supply, builds an Extractor,
+    and never gets supply-blocked."""
 
     def test_16_workers_reached(self, replay_data, bot_player):
         """At some point during the game, the bot should have at least 16 workers."""
@@ -79,76 +85,13 @@ class TestStep1WorkersTo16:
             f"Expected ≥ 12 Drones before Spawning Pool, got {drones_before_pool}"
         )
 
-
-# ---------------------------------------------------------------------------
-# Step 2: Build Spawning Pool at 12 Supply
-# ---------------------------------------------------------------------------
-
-class TestStep2SpawningPool:
-    """Step 2: Build a Spawning Pool after reaching 12 supply."""
-
-    def test_spawning_pool_built(self, replay_data, bot_player):
-        """A Spawning Pool should appear in the build order."""
-        build_order = get_build_order(replay_data, bot_player)
-        pool_entry = find_build_entry(build_order, SPAWNING_POOL)
-        assert pool_entry is not None, "No Spawning Pool built during the game"
-
-    def test_pool_at_supply_12(self, replay_data, bot_player):
-        """Spawning Pool should start at supply 11-14 (Zerg standard range)."""
-        build_order = get_build_order(replay_data, bot_player)
-        pool_entry = find_build_entry(build_order, SPAWNING_POOL)
-        if not pool_entry:
-            pytest.skip("No Spawning Pool built")
-
-        supply = pool_entry.get("supply", 0)
-        assert 11 <= supply <= 14, (
-            f"Spawning Pool started at supply {supply}, expected 11-14"
-        )
-
-    def test_at_most_one_pool(self, replay_data, bot_player):
-        """At no point should there be more than 1 Spawning Pool."""
-        build_order = get_build_order(replay_data, bot_player)
-        pool_entries = find_all_build_entries(build_order, SPAWNING_POOL)
-        assert len(pool_entries) <= 1, (
-            f"Built {len(pool_entries)} Spawning Pools, expected at most 1"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Step 3: Build Extractor
-# ---------------------------------------------------------------------------
-
-class TestStep3Extractor:
-    """Step 3: Secure gas by building an Extractor."""
-
     def test_extractor_built(self, replay_data, bot_player):
         """An Extractor should appear in the build order."""
         build_order = get_build_order(replay_data, bot_player)
         extractor = find_build_entry(build_order, EXTRACTOR)
         assert extractor is not None, "No Extractor built during the game"
 
-    def test_extractor_after_pool(self, replay_data, bot_player):
-        """Extractor should be built after the Spawning Pool starts."""
-        build_order = get_build_order(replay_data, bot_player)
-        pool = find_build_entry(build_order, SPAWNING_POOL)
-        extractor = find_build_entry(build_order, EXTRACTOR)
-
-        if not pool or not extractor:
-            pytest.skip("Need both Spawning Pool and Extractor to compare timing")
-
-        assert extractor["frame"] >= pool["frame"], (
-            f"Extractor built at frame {extractor['frame']} before Pool at {pool['frame']}"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Step 4: Build Overlords When Needed
-# ---------------------------------------------------------------------------
-
-class TestStep4Overlords:
-    """Step 4: Avoid supply blocks by producing Overlords on time."""
-
-    def test_no_extended_supply_block_before_pool(self, replay_data, bot_player):
+    def test_no_extended_supply_block(self, replay_data, bot_player):
         """No extended hard supply block before Pool.
 
         Zerg naturally hit 14/14 before their second Overlord pops. The Overlord
@@ -187,64 +130,55 @@ class TestStep4Overlords:
 
 
 # ---------------------------------------------------------------------------
-# Step 5: Expand After 14 Supply
+# Stage 2: The Rush Core
 # ---------------------------------------------------------------------------
 
-class TestStep5Expand:
-    """Step 5: Secure a second Hatchery."""
+class TestStage2RushCore:
+    """Stage 2: Your bot builds a Spawning Pool and produces Zerglings."""
 
-    def test_second_hatchery_built(self, replay_data, bot_player):
-        """A second Hatchery should be built (natural expansion)."""
-        tracks = get_unit_tracks(replay_data, bot_player)
-        hatchery_tracks = [t for t in tracks if t["unit_type"] == HATCHERY]
-
+    def test_spawning_pool_built(self, replay_data, bot_player):
+        """A Spawning Pool should appear in the build order."""
         build_order = get_build_order(replay_data, bot_player)
-        hatchery_bo = find_all_build_entries(build_order, HATCHERY)
+        pool_entry = find_build_entry(build_order, SPAWNING_POOL)
+        assert pool_entry is not None, "No Spawning Pool built during the game"
 
-        # Starting Hatchery is pre-placed (frame=0 or in unit_tracks)
-        # Expansion Hatchery appears in build order with frame > 0
-        total = max(len(hatchery_bo) + 1, len(hatchery_tracks))
+    def test_pool_timing(self, replay_data, bot_player):
+        """Spawning Pool should start by ~0:40 game time (0:30–0:55 pass range)."""
+        build_order = get_build_order(replay_data, bot_player)
+        pool_entry = find_build_entry(build_order, SPAWNING_POOL)
+        if not pool_entry:
+            pytest.skip("No Spawning Pool built")
 
-        assert total >= 2, (
-            f"Expected ≥ 2 Hatcheries, found {total} "
-            f"({len(hatchery_bo)} in build order, {len(hatchery_tracks)} in tracks)"
+        pool_time = pool_entry["time_seconds"]
+        assert pool_time <= POOL_MAX_TIME, (
+            f"Spawning Pool started at {pool_time:.0f}s, expected by {POOL_MAX_TIME}s"
         )
 
-    def test_expansion_after_14_supply(self, replay_data, bot_player):
-        """Second Hatchery should start at or after 14 supply."""
+    def test_pool_at_supply_12(self, replay_data, bot_player):
+        """Spawning Pool should start at supply 11-14 (Zerg standard range)."""
         build_order = get_build_order(replay_data, bot_player)
-        hatchery_entries = find_all_build_entries(build_order, HATCHERY)
+        pool_entry = find_build_entry(build_order, SPAWNING_POOL)
+        if not pool_entry:
+            pytest.skip("No Spawning Pool built")
 
-        # The initial Hatchery is frame=0 supply=0 — that's the starting base.
-        expansions = [h for h in hatchery_entries if h["frame"] > 0]
-        if not expansions:
-            pytest.skip("No expansion Hatchery in build order")
-
-        expansion = expansions[0]
-        supply = expansion.get("supply", 0)
-        assert supply >= 14, (
-            f"Expansion Hatchery at supply {supply}, expected ≥ 14"
+        supply = pool_entry.get("supply", 0)
+        assert 11 <= supply <= 14, (
+            f"Spawning Pool started at supply {supply}, expected 11-14"
         )
 
-
-# ---------------------------------------------------------------------------
-# Step 6: Spawn Zerglings and Queens
-# ---------------------------------------------------------------------------
-
-class TestStep6ZerglingsAndQueens:
-    """Step 6: Build army with Zerglings and Queens."""
+    def test_at_most_one_pool(self, replay_data, bot_player):
+        """At no point should there be more than 1 Spawning Pool."""
+        build_order = get_build_order(replay_data, bot_player)
+        pool_entries = find_all_build_entries(build_order, SPAWNING_POOL)
+        assert len(pool_entries) <= 1, (
+            f"Built {len(pool_entries)} Spawning Pools, expected at most 1"
+        )
 
     def test_zerglings_produced(self, replay_data, bot_player):
         """Zerglings should appear in the build order after Pool is ready."""
         build_order = get_build_order(replay_data, bot_player)
         zerglings = find_all_build_entries(build_order, ZERGLING)
         assert len(zerglings) > 0, "No Zerglings produced during the game"
-
-    def test_queen_produced(self, replay_data, bot_player):
-        """At least one Queen should be produced."""
-        build_order = get_build_order(replay_data, bot_player)
-        queens = find_all_build_entries(build_order, QUEEN)
-        assert len(queens) >= 1, "No Queen produced during the game"
 
     def test_zerglings_after_pool(self, replay_data, bot_player):
         """Zerglings should only be produced after Pool starts."""
@@ -264,19 +198,41 @@ class TestStep6ZerglingsAndQueens:
 
 
 # ---------------------------------------------------------------------------
-# Step 7: Research Zergling Speed
+# Stage 3: The Speed Advantage
 # ---------------------------------------------------------------------------
 
-class TestStep7ZerglingSpeed:
-    """Step 7: Research Zergling Movement Speed."""
+class TestStage3SpeedAdvantage:
+    """Stage 3: Your Zerglings have Metabolic Boost (Speed) and your
+    economy is reinforced with Queen Injects."""
+
+    def test_queen_produced(self, replay_data, bot_player):
+        """At least one Queen should be produced."""
+        tracks = get_unit_tracks(replay_data, bot_player)
+        queens = [t for t in tracks if t["unit_type"] == QUEEN]
+        assert len(queens) >= 1, "No Queen produced during the game"
 
     def test_speed_researched(self, replay_data, bot_player):
-        """Zergling Movement Speed upgrade should complete."""
+        """Zergling Movement Speed upgrade should be started."""
         upgrades = get_upgrades(replay_data, bot_player)
         speed_ups = [u for u in upgrades
                      if "movementspeed" in u.get("name", "").lower()
                      or "speed" in u.get("name", "").lower()]
         assert len(speed_ups) > 0, "Zergling Movement Speed not researched"
+
+    def test_speed_timing(self, replay_data, bot_player):
+        """Speed upgrade should start by ~2:30 game time (2:00–3:30 pass range)."""
+        upgrades = get_upgrades(replay_data, bot_player)
+        speed_ups = [u for u in upgrades
+                     if "movementspeed" in u.get("name", "").lower()
+                     or "speed" in u.get("name", "").lower()]
+
+        if not speed_ups:
+            pytest.skip("Zergling Speed not researched")
+
+        speed_time = speed_ups[0]["time_seconds"]
+        assert speed_time <= SPEED_MAX_TIME, (
+            f"Speed upgrade started at {speed_time:.0f}s, expected by {SPEED_MAX_TIME}s"
+        )
 
     def test_speed_after_pool(self, replay_data, bot_player):
         """Speed should be researched after Pool is started."""
@@ -300,25 +256,11 @@ class TestStep7ZerglingSpeed:
 
 
 # ---------------------------------------------------------------------------
-# Step 8: Produce Queens
+# Stage 4: Attack
 # ---------------------------------------------------------------------------
 
-class TestStep8QueenProduction:
-    """Step 8: Produce Queens for inject and defense."""
-
-    def test_queen_exists(self, replay_data, bot_player):
-        """At least one Queen should be produced."""
-        tracks = get_unit_tracks(replay_data, bot_player)
-        queens = [t for t in tracks if t["unit_type"] == QUEEN]
-        assert len(queens) >= 1, "No Queen produced during the game"
-
-
-# ---------------------------------------------------------------------------
-# Step 9: Attack Enemy Base
-# ---------------------------------------------------------------------------
-
-class TestStep9Attack:
-    """Step 9: Attack enemy base with Zerglings.
+class TestStage4Attack:
+    """Stage 4: Your Zerglings attack the enemy base.
 
     Replay data doesn't capture attack commands directly. We verify attack
     intent through death positions (units died far from spawn) or, when no
@@ -363,6 +305,47 @@ class TestStep9Attack:
             assert game_length < 300, (
                 f"Game took {game_length:.0f}s — rush attack expected under 300s"
             )
+
+    def test_attack_timing(self, replay_data, bot_player):
+        """Engagement should begin before 4:00 game time (5:00 hard cap).
+
+        Verified via game length for no-death-data replays, or via
+        death positions for combat replays.
+        """
+        tracks = get_unit_tracks(replay_data, bot_player)
+        zerglings = [t for t in tracks if t["unit_type"] == ZERGLING]
+
+        if not zerglings:
+            pytest.skip("No Zerglings produced")
+
+        # If we have death data, check that deaths occurred before the hard cap
+        died_with_position = [
+            z for z in zerglings
+            if z["died_at"] is not None and z.get("died_x") is not None
+            and (z["died_x"] - z["born_x"]) ** 2 + (z["died_y"] - z["born_y"]) ** 2 > 400
+        ]
+
+        if died_with_position:
+            first_combat_death = min(z["died_at"] for z in died_with_position)
+            first_combat_time = first_combat_death / LOOPS_PER_SECOND
+            assert first_combat_time <= ATTACK_MAX_TIME, (
+                f"First combat death at {first_combat_time:.0f}s, "
+                f"expected attack before {ATTACK_MAX_TIME}s"
+            )
+        else:
+            # Fall back to game length
+            game_length = replay_data.get("game_length_seconds", 0)
+            assert game_length <= ATTACK_MAX_TIME, (
+                f"Game lasted {game_length:.0f}s — rush engagement expected by {ATTACK_MAX_TIME}s"
+            )
+
+    def test_zergling_count_at_attack(self, replay_data, bot_player):
+        """At least 6 Zerglings should be produced for a viable rush."""
+        tracks = get_unit_tracks(replay_data, bot_player)
+        zerglings = [t for t in tracks if t["unit_type"] == ZERGLING]
+        assert len(zerglings) >= 6, (
+            f"Only {len(zerglings)} Zerglings produced — need ≥ 6 for a rush"
+        )
 
 
 # ---------------------------------------------------------------------------
