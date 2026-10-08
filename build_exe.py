@@ -19,9 +19,7 @@ def build_gui():
         "--paths", str(Path(__file__).parent),
         "--hidden-import", "sc2reader",
         "--hidden-import", "PyQt6",
-        "--hidden-import", "matplotlib",
         "--collect-data", "sc2reader",
-        "--collect-data", "matplotlib",
         str(Path(__file__).parent / "sc2_replay_parser" / "gui.py")
     ]
     subprocess.run(cmd, check=True)
@@ -41,7 +39,7 @@ def build_organizer():
         "--paths", str(Path(__file__).parent),
         "--hidden-import", "sc2reader",
         "--collect-data", "sc2reader",
-        "sc2_replay_parser.organizer:main"
+        str(Path(__file__).parent / "sc2_replay_parser" / "organizer.py")
     ]
     subprocess.run(cmd, check=True)
     print(f"Built organizer: {Path(__file__).parent / 'dist' / 'replay_organizer.exe'}")
@@ -60,7 +58,7 @@ def build_parser():
         "--paths", str(Path(__file__).parent),
         "--hidden-import", "sc2reader",
         "--collect-data", "sc2reader",
-        "sc2_replay_parser.parser:main"
+        str(Path(__file__).parent / "sc2_replay_parser" / "parser.py")
     ]
     subprocess.run(cmd, check=True)
     print(f"Built parser: {Path(__file__).parent / 'dist' / 'sc2_replay_parser.exe'}")

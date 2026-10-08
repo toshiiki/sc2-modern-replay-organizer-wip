@@ -11,8 +11,12 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from pathlib import Path
 from typing import List, Optional
 
-from .settings import SettingsManager
-from .themes import apply_theme
+try:
+    from .settings import SettingsManager
+    from .themes import apply_theme
+except ImportError:
+    from sc2_replay_parser.settings import SettingsManager
+    from sc2_replay_parser.themes import apply_theme
 
 
 class OrganizerThread(QThread):
