@@ -3,18 +3,29 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sc2-replay-parser"
-version = "0.1.0"
-description = "Parse StarCraft II bot replays into structured JSONL data for training and analysis"
+name = "sc2-replay-organizer"
+version = "0.7.0"
+description = "Modern StarCraft II replay organizer with intelligent folder classification and PyQt6 GUI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "sc2reader>=1.8.0",
+    "sc2reader>=1.9.0",
+    "s2protocol>=1.0.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PyQt6>=6.6.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.24.0",
+    "Pillow>=10.0.0",
 ]
 
 [project.scripts]
 sc2-replay-parser = "sc2_replay_parser.parser:main"
+replay-organizer = "sc2_replay_parser.organizer:main"
+sc2-replay-gui = "sc2_replay_parser.gui:main"
 
 [tool.setuptools.packages.find]
 include = ["sc2_replay_parser*"]
