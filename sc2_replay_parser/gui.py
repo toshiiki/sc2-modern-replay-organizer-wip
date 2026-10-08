@@ -3,7 +3,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTreeWidget, QTreeWidgetItem, QLabel, QPushButton,
-    QFileDialog, QCheckBox, QFormLayout, QLineEdit,
+    QFileDialog, QCheckBox, QFormLayout, QLineEdit, QSpinBox,
     QMessageBox, QStatusBar, QMenuBar, QDialog, QDialogButtonBox
 )
 from PyQt6.QtGui import QAction, QIcon
