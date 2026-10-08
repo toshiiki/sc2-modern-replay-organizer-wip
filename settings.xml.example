@@ -1,15 +1,15 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Configuration>
   <Folders>
     <LookupFolder>
-      <Path dir="C:\Users\throwaway\Documents\StarCraft II\Accounts\302322694\1-S2-1-13032029\Replays\Multiplayer\00-organized\" subdirs="yes" />
+      <Path dir="C:\Users\YOUR_USERNAME\Documents\StarCraft II\Accounts\YOUR_ACCOUNT_ID\YOUR_REPLAY_FOLDER\Replays\Multiplayer\00-organized\" subdirs="yes" />
     </LookupFolder>
     <SaveTo>
       <Path dir="" action="overwrite" />
     </SaveTo>
   </Folders>
   <Match>
-    <SpecificPlayer set="yes" name="toshiiki" sort="yes" />
+    <SpecificPlayer set="yes" name="YOUR_USERNAME" sort="yes" />
     <LadderOnly set="no" />
   </Match>
   <Rules>

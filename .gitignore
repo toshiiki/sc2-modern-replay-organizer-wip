@@ -1,3 +1,24 @@
 __pycache__/
 *.egg-info/
 *.pyc
+
+# Build artifacts
+dist/
+build/
+*.spec
+*.exe
+*.pdb
+*.dll
+
+# User-specific configuration
+settings.xml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
