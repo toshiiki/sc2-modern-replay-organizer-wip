@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Folders>
+    <LookupFolder>
+      <Path dir="C:\Users\throwaway\Documents\StarCraft II\Accounts\302322694\1-S2-1-13032029\Replays\Multiplayer\00-organized\" subdirs="yes" />
+    </LookupFolder>
+    <SaveTo>
+      <Path dir="" action="overwrite" />
+    </SaveTo>
+  </Folders>
+  <Match>
+    <SpecificPlayer set="yes" name="toshiiki" sort="yes" />
+    <LadderOnly set="no" />
+  </Match>
+  <Rules>
+    <RenameOriginal set="yes" />
+    <CopyToLocation set="no" />
+    <DeleteOriginal set="no" />
+    <DeleteNon1V1 set="no" />
+    <FilePattern value="[DATE] - [TIME]_ [P1NAME]([P1R]) vs [P2NAME]([P2R]) on [MAP].[EXT]" />
+  </Rules>
+  <DemoPatterns>
+    <Pattern value="[ORIGINAL].[EXT]" />
+    <Pattern value="[DATE] [P1NAME]([P1R]) vs [P2NAME]([P2R]) on [MAP].[EXT]" />
+    <Pattern value="[[DATE]][[T]] [MATCHUP] [MAP] - [P1NAME] vs [P2NAME].[EXT]" />
+    <Pattern value="[[DATE]-[TIME]] [MATCHUP] [MAP] - [P1NAME] vs [P2NAME].[EXT]" />
+    <Pattern value="[DATE] [ORIGINAL].[T].[EXT]" />
+  </DemoPatterns>
+  <Debug set="no" />
+</Configuration>
